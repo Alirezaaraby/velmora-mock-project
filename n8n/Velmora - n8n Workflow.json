@@ -1,0 +1,250 @@
+{
+  "name": "Velmora - n8n Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "maxItems": 50
+      },
+      "id": "ab6f28fd-cc16-4d3e-8fe7-eaeda3105248",
+      "name": "Limit To ",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "products",
+        "options": {}
+      },
+      "id": "f86d2318-a79c-41dc-864d-2ea60190ac63",
+      "name": "Collect Products1",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Shopper request (JSON):\n{{ JSON.stringify($('Receive Product Preferences1').first().json.body) }}\n\nCandidate products returned by the database after hard filtering for occasion, size, and budget (JSON):\n{{ JSON.stringify($json.products) }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are Velmora's fashion stylist and product-ranking engine. You receive the shopper's complete request JSON, including their free-text description and preferences, plus candidate products that have ALREADY been filtered by the database for the requested occasion IDs, size IDs, and inclusive GBP budget range. These three criteria are hard constraints: never claim a product matches a different size, occasion, or budget than the supplied product data supports, and do not invent products.\n\nRank only the candidate products from best to worst based on the shopper's free-text description and the preferences object (category, fit, colours, fabrics, notes). Treat null, empty arrays, and category='any' as unspecified preferences. Use the description to infer style priorities only when reasonably supported; do not override explicit preferences. Consider event_date and delivery information only when product lead-time data supports a cautious observation. Do not promise an arrival date or shipping date unless it can be calculated from the provided data; if delivery feasibility is unknown, say so in the reason or summary.\n\nUse only products from the candidate list. Copy each product's id and name exactly. Give each recommendation a rank, a match score from 0 to 100, and a concise one-sentence reason grounded in the provided product fields. Return a one-sentence summary. If there are no candidates, return an empty recommendations array and explain that no products matched the hard filters. Do not mention unsupported inventory, reviews, scarcity, or product facts."
+        }
+      },
+      "id": "b637c252-bb52-402e-a874-7197344fdc1f",
+      "name": "Rank Products1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        464,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "maxOutputTokens": 4096,
+          "temperature": 0.2
+        }
+      },
+      "id": "f6f23265-b96a-4940-82ed-24e8bf54124f",
+      "name": "Gemini Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        144
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Dsbky6rkGpvpZib3",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"summary\":\"These pieces best match your style preferences within your selected occasion, size, and budget.\",\"recommendations\":[{\"rank\":1,\"id\":\"VLM-002\",\"name\":\"Vela dress\",\"score\":92,\"reason\":\"The velvet fabric and relaxed fit align with your stated preference for a softly structured evening look.\"}]}"
+      },
+      "id": "12cf4416-6831-4ab5-b7be-9ab3b3782171",
+      "name": "Ranked JSON1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.output }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "6e7fb184-d65c-497e-a41a-b851f13b65ed",
+      "name": "Send To Website1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        816,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "velmora-match-products",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8acccd21-0c92-4076-9aef-090cf73db6e3",
+      "name": "Receive Product Preferences1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -96
+      ],
+      "webhookId": "a8c5a40b-65c7-4d18-9c1a-velmora001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lfbiwltfsdymqtcuaamr.supabase.co/rest/v1/rpc/match_products",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_occasion_ids: $json.body.occasion, p_size_ids: $json.body.size, p_min_gbp: $json.body.budget.min_gbp, p_max_gbp: $json.body.budget.max_gbp } }}",
+        "options": {}
+      },
+      "id": "c89704c3-4a29-459c-80f9-485807df4b79",
+      "name": "Filter Products in Supabase1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -224,
+        -96
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "iL229nI3pvJJWKNt",
+          "name": "Supabase account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Limit To ": {
+      "main": [
+        [
+          {
+            "node": "Collect Products1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Products1": {
+      "main": [
+        [
+          {
+            "node": "Rank Products1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Products1": {
+      "main": [
+        [
+          {
+            "node": "Send To Website1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Rank Products1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ranked JSON1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Rank Products1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive Product Preferences1": {
+      "main": [
+        [
+          {
+            "node": "Filter Products in Supabase1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Products in Supabase1": {
+      "main": [
+        [
+          {
+            "node": "Limit To ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "be8c34ed-11ea-4e22-8113-56a2a2d6a45a",
+  "meta": {
+    "instanceId": "a028f469b3ab9c34e900bca0851f7499065a70a14d39f08f808c48970c6fc2fa"
+  },
+  "nodeGroups": [],
+  "id": "FLmEHucDXwggp0PK",
+  "tags": []
+}

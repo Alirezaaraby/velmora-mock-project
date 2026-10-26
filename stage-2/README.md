@@ -1,0 +1,3 @@
+# Description
+
+After analysing the customer analytics data, I conducted further research using the [Baymard Institute’s cart abandonment research](https://baymard.com/lists/cart-abandonment-rate) to understand why visitors browse websites but do not complete purchases. The research identified key barriers, including unexpected costs, delivery concerns, lack of trust, complicated checkout processes, and unclear return policies. These findings helped me identify potential improvements to Velmora’s website and conversion rate.
