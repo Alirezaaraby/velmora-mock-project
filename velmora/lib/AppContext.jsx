@@ -29,16 +29,27 @@ const readList = (key) => {
 export function AppProvider({ children }) {
   const [stylistOpen, setStylistOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
-  const [answers, setAnswers] = useState(() => readStored(STYLIST_KEY, {}));
-  const [bag, setBag] = useState(() => readList(BAG_KEY));
+  const [answers, setAnswers] = useState({});
+  const [bag, setBag] = useState([]);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    queueMicrotask(() => {
+      setAnswers(readStored(STYLIST_KEY, {}));
+      setBag(readList(BAG_KEY));
+      setIsHydrated(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
     window.localStorage.setItem(STYLIST_KEY, JSON.stringify(answers));
-  }, [answers]);
+  }, [answers, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     window.localStorage.setItem(BAG_KEY, JSON.stringify(bag));
-  }, [bag]);
+  }, [bag, isHydrated]);
 
   const openStylist = useCallback((preset) => {
     setBagOpen(false);

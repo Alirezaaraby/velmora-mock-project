@@ -11,7 +11,8 @@ CREATE TABLE public.categories (
 
 CREATE TABLE public.colours (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE
+    name TEXT NOT NULL UNIQUE,
+    colour_hex TEXT NOT NULL;
 );
 
 CREATE TABLE public.fabrics (

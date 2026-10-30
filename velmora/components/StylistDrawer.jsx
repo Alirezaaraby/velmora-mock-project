@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Drawer from "@/components/Drawer";
 import ChipGroup from "@/components/ChipGroup";
 import MatchLoader from "@/components/MatchLoader";
 import PlaceholderImage from "@/components/PlaceholderImage";
 import { useApp } from "@/lib/AppContext";
-import { occasionName } from "@/data/catalog";
-import { BUDGETS, matchesFor, readNote } from "@/lib/stylist";
-import { dayISO, todayISO } from "@/lib/dates";
+import { BUDGETS, readNote } from "@/lib/stylist";
+import { todayISO } from "@/lib/dates";
+import Link from "next/link";
 
 const STEP_ORDER = [
   "occasion",
@@ -20,7 +19,7 @@ const STEP_ORDER = [
   "postcode",
   "note",
 ];
-const REQUIRED = ["occasion", "event_date", "size", "country"];
+const REQUIRED = ["occasion", "event_date", "size", "budget", "country"];
 
 const BUDGET_OPTIONS = BUDGETS.map((budget) => ({
   value: budget.value,
@@ -67,7 +66,6 @@ const answerList = (value) => (Array.isArray(value) ? value : value ? [value] : 
 export default function StylistDrawer() {
   const { stylistOpen, closeStylist, answers, setAnswer, clearStylist } =
     useApp();
-  const router = useRouter();
   const [step, setStep] = useState("occasion");
   const [note, setNote] = useState("");
   const [postcode, setPostcode] = useState("");
@@ -123,13 +121,6 @@ export default function StylistDrawer() {
     }),
     [answers, note, postcode],
   );
-
-  let failed = false;
-  try {
-    matchesFor(answers);
-  } catch {
-    failed = true;
-  }
 
   const stepIndex = steps.indexOf(step);
   const progress = showResults ? 1 : (stepIndex + 1) / steps.length;
@@ -191,19 +182,6 @@ export default function StylistDrawer() {
     if (stepIndex > 0) setStep(steps[stepIndex - 1]);
   };
 
-  const browseOccasions = () => {
-    closeStylist();
-    router.push("/");
-    window.setTimeout(() => {
-      document.getElementById("occasions")?.scrollIntoView({ block: "start" });
-    }, 80);
-  };
-
-  const openPiece = (piece) => {
-    closeStylist();
-    router.push(`/product/${piece.slug}`);
-  };
-
   const handleClear = () => {
     clearStylist();
     setNote("");
@@ -222,6 +200,8 @@ export default function StylistDrawer() {
         ? Boolean(answers.event_date)
         : step === "size"
           ? answerList(answers.size).length > 0
+          : step === "budget"
+            ? Boolean(answers.budget)
           : step === "piece_type"
             ? true
             : step === "fit"
@@ -267,23 +247,6 @@ export default function StylistDrawer() {
   );
 
   const results = () => {
-    if (failed) {
-      return (
-        <div className="border border-stone/70 p-5">
-          <p className="text-sm leading-relaxed text-ink">
-            The stylist is not available. You can still browse by occasion.
-          </p>
-          <button
-            type="button"
-            onClick={browseOccasions}
-            className="mt-4 min-h-[44px] text-sm text-oxblood underline decoration-stone underline-offset-4"
-          >
-            Browse by occasion
-          </button>
-        </div>
-      );
-    }
-
     return (
       <>
         {matchResponse?.summary && (
@@ -323,9 +286,10 @@ export default function StylistDrawer() {
           <ul className="grid gap-4 sm:grid-cols-2">
             {matchResponse.recommendations.slice(0, 5).map((recommendation) => (
               <li key={recommendation.id}>
-                <button
-                  type="button"
-                  onClick={() => openPiece({ slug: recommendation.id })}
+                <Link
+                  href={`/product/${recommendation.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="block w-full border border-stone/70 p-3 text-left transition-colors hover:border-ink"
                 >
                   <div className="flex gap-4">
@@ -348,7 +312,7 @@ export default function StylistDrawer() {
                       </span>
                     </span>
                   </div>
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
@@ -395,17 +359,6 @@ export default function StylistDrawer() {
                   : "pieces match"}{" "}
                 your answers.
               </h3>
-              {/* {answerList(answers.occasion).length > 0 && (
-                <p className="mt-2 text-sm text-ink/75">
-                  {answerList(answers.occasion).map(occasionName).join(", ")},{" "}
-                  {answerList(answers.size).join(", ")}, delivered to{" "}
-                  {answers.country}
-                  {answers.event_date
-                    ? `, needed by ${dayISO(answers.event_date)}`
-                    : ""}
-                  .
-                </p>
-              )} */}
             </div>
             {matchLoading && <MatchLoader />}
             {!matchLoading && matchError && (
@@ -487,7 +440,6 @@ export default function StylistDrawer() {
                 <h3 className="font-heading text-2xl font-light">
                   What is your budget?
                 </h3>
-                <p className="eyebrow mt-3 text-ink/60">Optional</p>
                 <ChipGroup
                   className="mt-6"
                   name="budget"

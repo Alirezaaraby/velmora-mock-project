@@ -6,44 +6,43 @@ import DeliveryStrip from '@/components/DeliveryStrip';
 import OccasionCard from '@/components/OccasionCard';
 import PieceCard from '@/components/PieceCard';
 import ProductGallery from '@/components/ProductGallery';
-import { FACTS, OCCASIONS, STATUS } from '@/data/catalog';
+import { STATUS } from '@/data/catalog';
 import { useApp } from '@/lib/AppContext';
 import { createClient } from '@/utils/supabase/client';
 import ClientProviders from './product/client-providers';
 
 const PRODUCTS_PAGE_SIZE = 20;
-const COLOUR_SWATCHES = {
-  champagne: '#D8C7A9',
-  emerald: '#255045',
-  ivory: '#F1EAE0',
-  oxblood: '#6B1F2A',
-  stone: '#CFC6BA',
-};
 
 const productQuery = `
   id,
   name,
   price_gbp,
+  image,
   description,
   made_to_order,
   in_stock,
   fabrics(name),
   fits(name),
-  product_colours(colours(name)),
-  product_sizes(sizes(name))
+  product_colours(colours(name, colour_hex)),
+  product_sizes(sizes(name)),
+  images
 `;
 
 function mapProduct(product) {
   const colours = (product.product_colours || []).map(({ colours: colour }) => ({
     name: colour.name,
-    hex: COLOUR_SWATCHES[colour.name.toLowerCase()] || '#CFC6BA',
+    hex: colour.colour_hex || '#CFC6BA',
   }));
   const sizes = (product.product_sizes || []).map(({ sizes: size }) => size.name);
+  const images = Array.isArray(product.images) && product.images.length
+    ? product.images
+    : [product.image].filter(Boolean);
 
   return {
     slug: product.id,
     name: product.name,
     image: product.image,
+    images,
     price: Number(product.price_gbp),
     fabric: product.fabrics?.name || 'Unknown fabric',
     fit: product.fits?.name || 'Relaxed',
@@ -384,7 +383,7 @@ function ProductPage({ slug }) {
           All pieces
         </Link>
         <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] lg:gap-20">
-          <ProductGallery slug={piece.slug} view={view} onView={setView} />
+          <ProductGallery image={piece.image} images={piece.images} view={view} onView={setView} />
           <div className="lg:py-6">
             <p className="eyebrow text-oxblood">{piece.fabric}, {piece.fit}</p>
             <h1 className="mt-4 font-heading text-5xl font-light leading-none md:text-6xl">
@@ -476,9 +475,11 @@ function ProductPage({ slug }) {
 function HomePage() {
   const [occasions, setOccasions] = useState([]);
   const [popularProducts, setPopularProducts] = useState([]);
+  const [productCount, setProductCount] = useState(null);
   const [visibleOccasions, setVisibleOccasions] = useState(4);
   const [occasionsLoading, setOccasionsLoading] = useState(true);
   const [occasionsError, setOccasionsError] = useState('');
+  const [productCountError, setProductCountError] = useState('');
   const [popularLoading, setPopularLoading] = useState(true);
   const [popularError, setPopularError] = useState('');
 
@@ -488,7 +489,7 @@ function HomePage() {
 
     const { data, error } = await createClient()
       .from('occasions')
-      .select('id,name,image')
+      .select('id,name,image,product_occasions(count)')
       .order('id', { ascending: true });
 
     if (error) {
@@ -499,8 +500,10 @@ function HomePage() {
 
     setOccasions(
       (data || []).map((occasion) => ({
-        ...occasion,
-        count: OCCASIONS.find((item) => item.id === occasion.id)?.count ?? 0,
+        id: occasion.id,
+        name: occasion.name,
+        image: occasion.image,
+        count: occasion.product_occasions?.[0]?.count ?? 0,
       })),
     );
     setOccasionsLoading(false);
@@ -509,6 +512,25 @@ function HomePage() {
   useEffect(() => {
     queueMicrotask(loadOccasions);
   }, [loadOccasions]);
+
+  const loadProductCount = useCallback(async () => {
+    setProductCountError('');
+
+    const { count, error } = await createClient()
+      .from('products')
+      .select('id', { count: 'exact', head: true });
+
+    if (error) {
+      setProductCountError(error.message);
+      return;
+    }
+
+    setProductCount(count ?? 0);
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(loadProductCount);
+  }, [loadProductCount]);
 
   const loadPopularProducts = useCallback(async () => {
     setPopularLoading(true);
@@ -568,8 +590,8 @@ function HomePage() {
             Evening wear, made to order.
           </h1>
           <p className="mt-8 max-w-lg leading-relaxed text-ink/75">
-            A considered collection of {FACTS.collectionSize} pieces for the nights worth dressing
-            for. Designed in London, made for you.
+            A considered collection of {productCount ?? '...'} pieces for the nights worth
+            dressing for. Designed in London, made for you.
           </p>
           <Link
             href="/#collection"
@@ -587,10 +609,23 @@ function HomePage() {
           <div className="flex flex-wrap items-end justify-between gap-6">
             <h2 className="font-heading text-3xl font-light md:text-5xl">Shop by occasion</h2>
             <p className="max-w-sm text-sm leading-relaxed text-ink/75">
-              Routes through the {FACTS.collectionSize}-piece collection. Choose one and the
+              Routes through the {productCount ?? '...'}-piece collection. Choose one and the
               stylist starts there.
             </p>
           </div>
+          {productCountError && (
+            <div className="mt-8 border border-oxblood/30 bg-oxblood/5 px-5 py-4 text-sm">
+              <p>We couldn&apos;t load the collection count.</p>
+              <p className="mt-1 text-ink/70">{productCountError}</p>
+              <button
+                type="button"
+                onClick={loadProductCount}
+                className="mt-3 text-xs uppercase tracking-[0.2em] text-oxblood underline underline-offset-4"
+              >
+                Try again
+              </button>
+            </div>
+          )}
           {occasionsError && (
             <div className="mt-8 border border-oxblood/30 bg-oxblood/5 px-5 py-4 text-sm">
               <p>We couldn&apos;t load the occasions.</p>

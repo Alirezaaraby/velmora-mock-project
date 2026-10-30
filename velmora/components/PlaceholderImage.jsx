@@ -1,14 +1,16 @@
-import React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export default function PlaceholderImage({ label, swatch, image, ratio = '4 / 5', caption = '', align = 'bottom', className }) {
   return (
     <div className={cn('relative w-full overflow-hidden bg-stone', className)} style={{ aspectRatio: ratio }}>
       {image && (
-        <img
+        <Image
           src={image}
           alt={label || ''}
+          fill
           loading="lazy"
+          sizes="(min-width: 1024px) 50vw, 100vw"
           className="absolute inset-0 h-full w-full object-cover"
         />
       )}

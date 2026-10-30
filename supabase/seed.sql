@@ -13,16 +13,16 @@ INSERT INTO public.categories (name) VALUES
     ('accessory')
 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO public.colours (name) VALUES
-    ('pewter'),
-    ('ivory'),
-    ('midnight'),
-    ('champagne'),
-    ('emerald'),
-    ('black'),
-    ('sapphire'),
-    ('oxblood'),
-    ('dusty rose')
+INSERT INTO public.colours (name, colour_hex) VALUES
+    ('pewter', '#8A8D91'),
+    ('ivory', '#F5F0E6'),
+    ('midnight', '#191C2B'),
+    ('champagne', '#D6C3A5'),
+    ('emerald', '#087A55'),
+    ('black', '#171717'),
+    ('sapphire', '#2451A4'),
+    ('oxblood', '#511B2B'),
+    ('dusty rose', '#C48F91')
 ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO public.fabrics (name) VALUES

@@ -2,7 +2,6 @@ import React from 'react';
 import Link from 'next/link';
 import PlaceholderImage from '@/components/PlaceholderImage';
 import { STATUS } from '@/data/catalog';
-import { pieceImage } from '@/data/images';
 import { cn } from '@/lib/utils';
 
 export default function PieceCard({ piece, compact = false, className = '' }) {
@@ -13,7 +12,7 @@ export default function PieceCard({ piece, compact = false, className = '' }) {
       aria-label={`${piece.name}, £${piece.price}, ${STATUS[piece.status].label}`}
     >
       <PlaceholderImage
-        image={piece.image || pieceImage(piece.slug, 0)}
+        image={piece.image}
         swatch={piece.colours[0].hex}
         label={compact ? undefined : piece.name}
         className="transition-opacity group-hover:opacity-90"
